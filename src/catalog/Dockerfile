@@ -1,57 +1,29 @@
-# Build Stage
-FROM public.ecr.aws/amazonlinux/amazonlinux:2023 AS build-env
-
-# We tell DNF not to install Recommends and Suggests packages, which are
-# weak dependencies in DNF terminology, thus keeping our installed set of
-# packages as minimal as possible.
-RUN dnf --setopt=install_weak_deps=False install -q -y \
-    git \
-    golang \
-    && \
-    dnf clean all
-
-RUN mkdir -p "${GOPATH}/src" "${GOPATH}/bin" /appsrc
-
-WORKDIR /appsrc
-
-ENV GOPROXY=https://goproxy.io,direct
-
+# Stage 1: Build
+FROM golang:1.24-alpine AS builder
+WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
-
 COPY . .
+RUN go build -o catalog main.go
 
-RUN go build -o main main.go
-
-# Final stage
-FROM public.ecr.aws/amazonlinux/amazonlinux:2023
-
-ENV APPUSER=appuser
-ENV APPUID=1000
-ENV APPGID=1000
-
-# We tell DNF not to install Recommends and Suggests packages, which are
-# weak dependencies in DNF terminology, thus keeping our installed set of
-# packages as minimal as possible.
-RUN dnf --setopt=install_weak_deps=False install -q -y \
-    shadow-utils \
-    && \
-    dnf clean all
-
-RUN useradd \
-    --home "/app" \
-    --create-home \
-    --user-group \
-    --uid "$APPUID" \
-    "$APPUSER"
-
+# Stage 2: Run
+FROM alpine:3.20
 WORKDIR /app
+COPY --from=builder /app/catalog .
+COPY repository/products.json repository/tags.json ./repository/
+
+# Create non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 
-COPY --chown=appuser:appuser --from=build-env /appsrc/main /app/
+EXPOSE 8080
 
-COPY ./ATTRIBUTION.md ./LICENSES.md
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD wget --spider -q http://localhost:8080/health || exit 1
 
-ENV GIN_MODE=release
+ENV DB_HOST=mysql \
+    DB_PORT=3306 \
+    DB_USER=catalog \
+    DB_PASSWORD=changeme \
+    DB_NAME=catalog
 
-ENTRYPOINT ["/app/main"]
+ENTRYPOINT ["./catalog"]

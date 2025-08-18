@@ -1,70 +1,28 @@
-# Build Stage
-FROM public.ecr.aws/amazonlinux/amazonlinux:2023 AS build-env
-
-# We tell DNF not to install Recommends and Suggests packages, keeping our
-# installed set of packages as minimal as possible.
-RUN dnf --setopt=install_weak_deps=False install -q -y \
-    maven \
-    java-21-amazon-corretto-headless \
-    which \
-    tar \
-    gzip \
-    && \
-    dnf clean all
-
-ARG JAR_PATH
-
-VOLUME /tmp
-WORKDIR /
-
-COPY .mvn .mvn
-COPY mvnw .
-COPY pom.xml .
-
-RUN ./mvnw dependency:go-offline -B -q
-
-COPY ./src ./src
-
-RUN ./mvnw -DskipTests package -q && \
-    mv /target/orders-0.0.1-SNAPSHOT.jar /app.jar
-
-# Package Stage
-FROM public.ecr.aws/amazonlinux/amazonlinux:2023
-
-# We tell DNF not to install Recommends and Suggests packages, which are
-# weak dependencies in DNF terminology, thus keeping our installed set of
-# packages as minimal as possible.
-RUN dnf --setopt=install_weak_deps=False install -q -y \
-    java-21-amazon-corretto-headless \
-    shadow-utils \
-    && \
-    dnf clean all
-
-# use curl-full to use "telnet://" scheme
-# https://docs.aws.amazon.com/linux/al2023/ug/curl-minimal.html
-RUN dnf -q -y swap libcurl-minimal libcurl-full \
-    && dnf -q -y swap curl-minimal curl-full
-
-ENV APPUSER=appuser
-ENV APPUID=1000
-ENV APPGID=1000
-
-RUN useradd \
-    --home "/app" \
-    --create-home \
-    --user-group \
-    --uid "$APPUID" \
-    "$APPUSER"
-
-ENV JAVA_TOOL_OPTIONS=
-ENV SPRING_PROFILES_ACTIVE=prod
-
+# Stage 1: Build
+FROM eclipse-temurin:21-jdk-alpine AS builder
 WORKDIR /app
-USER appuser
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
+COPY src/ src/
+RUN ./mvnw clean package -DskipTests
 
-# COPY ./ATTRIBUTION.md ./LICENSES.md
-COPY --chown=appuser:appuser --from=build-env /app.jar .
+# Stage 2: Run
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=builder /app/target/*.jar app.jar
+
+RUN addgroup --system appgroup && adduser --system appuser --ingroup appgroup
+USER appuser
 
 EXPOSE 8080
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD wget --spider -q http://localhost:8080/actuator/health || exit 1
+
+ENV DB_HOST=mysql \
+    DB_PORT=3306 \
+    DB_USER=orders \
+    DB_PASSWORD=changeme \
+    DB_NAME=orders \
+    SQS_ENDPOINT=http://sqs:9324
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

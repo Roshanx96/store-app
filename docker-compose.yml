@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  ui:
+    build: ./src/ui
+    ports:
+      - "8081:8080"
+    environment:
+      - CART_API_URL=http://cart:8080
+      - CATALOG_API_URL=http://catalog:8080
+      - CHECKOUT_API_URL=http://checkout:3000
+      - ORDERS_API_URL=http://orders:8080
+    depends_on:
+      - cart
+      - catalog
+      - checkout
+      - orders
+
+  cart:
+    build: ./src/cart
+    ports:
+      - "8082:8080"
+    environment:
+      - DYNAMODB_ENDPOINT=http://dynamodb:8000
+      - AWS_REGION=us-east-1
+    depends_on:
+      - dynamodb
+
+  catalog:
+    build: ./src/catalog
+    ports:
+      - "8083:8080"
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=catalog
+      - DB_PASSWORD=changeme
+      - DB_NAME=catalog
+    depends_on:
+      - mysql
+
+  checkout:
+    build: ./src/checkout
+    ports:
+      - "3000:3000"
+    environment:
+      - ORDERS_API_URL=http://orders:8080
+      - CART_API_URL=http://cart:8080
+    depends_on:
+      - orders
+      - cart
+
+  orders:
+    build: ./src/orders
+    ports:
+      - "8084:8080"
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=orders
+      - DB_PASSWORD=changeme
+      - DB_NAME=orders
+      - SQS_ENDPOINT=http://sqs:9324
+    depends_on:
+      - mysql
+      - sqs
+
+  mysql:
+    image: mysql:8.3
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: catalog
+      MYSQL_USER: catalog
+      MYSQL_PASSWORD: changeme
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  dynamodb:
+    image: amazon/dynamodb-local
+    ports:
+      - "8000:8000"
+
+  sqs:
+    image: softwaremill/elasticmq
+    ports:
+      - "9324:9324"
+
+volumes:
+  mysql_data:
