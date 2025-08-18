@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+  namespace: store-app-ns
+  labels:
+    app: checkout
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: checkout
+  template:
+    metadata:
+      labels:
+        app: checkout
+    spec:
+      containers:
+        - name: checkout
+          image: roshanx/store-app-checkout:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: store-app-config
+            - secretRef:
+                name: store-app-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout
+  namespace: store-app-ns
+  labels:
+    app: checkout
+spec:
+  type: ClusterIP
+  selector:
+    app: checkout
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP

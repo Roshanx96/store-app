@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: store-app-config
+  namespace: store-app-ns
+data:
+  # Non-sensitive environment variables for all services
+  CART_API_URL: http://cart:8080
+  CATALOG_API_URL: http://catalog:8080
+  CHECKOUT_API_URL: http://checkout:3000
+  ORDERS_API_URL: http://orders:8080
+  DB_HOST: mysql
+  DB_PORT: "3306"
+  DB_NAME_CATALOG: catalog
+  DB_NAME_ORDERS: orders
+  DYNAMODB_ENDPOINT: http://dynamodb:8000
+  AWS_REGION: us-east-1
+  SQS_ENDPOINT: http://sqs:9324

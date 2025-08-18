@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cart
+  namespace: store-app-ns
+  labels:
+    app: cart
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cart
+  template:
+    metadata:
+      labels:
+        app: cart
+    spec:
+      containers:
+        - name: cart
+          image: roshanx/store-app-cart:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: store-app-config
+            - secretRef:
+                name: store-app-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: cart
+  namespace: store-app-ns
+  labels:
+    app: cart
+spec:
+  type: ClusterIP
+  selector:
+    app: cart
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP

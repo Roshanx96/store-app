@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sqs
+  namespace: store-app-ns
+  labels:
+    app: sqs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sqs
+  template:
+    metadata:
+      labels:
+        app: sqs
+    spec:
+      containers:
+        - name: sqs
+          image: softwaremill/elasticmq
+          ports:
+            - containerPort: 9324
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: sqs
+  namespace: store-app-ns
+  labels:
+    app: sqs
+spec:
+  type: ClusterIP
+  selector:
+    app: sqs
+  ports:
+    - port: 9324
+      targetPort: 9324
+      protocol: TCP
