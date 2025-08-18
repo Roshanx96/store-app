@@ -1,22 +1,4 @@
 apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: mysql-pv
-  namespace: store-app-ns
-spec:
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: manual
-  hostPath:
-    path: /mnt/mysql-data
-  persistentVolumeReclaimPolicy: Retain
-  volumeMode: Filesystem
-
----
-
-apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: mysql-pvc
@@ -26,7 +8,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 10Gi
-  storageClassName: manual
-  volumeMode: Filesystem
-  volumeName: mysql
+      storage: 5Gi
+  storageClassName: gp3   # ❌ this is the problem
+
+
