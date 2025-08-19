@@ -20,11 +20,17 @@ spec:
           image: roshanx/store-app-catalog:latest
           ports:
             - containerPort: 8080
-          envFrom:
-            - configMapRef:
-                name: store-app-config
-            - secretRef:
-                name: store-app-secrets
+          env:
+            - name: DB_HOST
+              value: "mysql"              # matches mysql Service name
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_NAME
+              value: "catalog"
+            - name: DB_USER
+              value: "catalog"
+            - name: DB_PASSWORD
+              value: "changeme"
           resources:
             requests:
               cpu: "100m"
