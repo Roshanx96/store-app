@@ -9,6 +9,6 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: gp3   # ❌ this is the problem
+  storageClassName: gp2        #microk8s-hostpath- you can put this value microk8s testing purpose
 
 
