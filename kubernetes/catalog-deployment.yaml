@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: catalog
-          image: roshanx/store-app-catalog:latest
+          image: roshanx/store-app-catalog:v1
           ports:
             - containerPort: 8080
           env:
