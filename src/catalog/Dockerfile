@@ -1,29 +1,28 @@
-# Stage 1: Build
-FROM golang:1.24-alpine AS builder
+# ---------- Builder Stage ----------
+FROM golang:1.23 as builder
+
 WORKDIR /app
+
+# Install dependencies needed for CGO + SQLite
+RUN apt-get update && apt-get install -y gcc sqlite3 libsqlite3-dev
+
+# Copy go modules first
 COPY go.mod go.sum ./
 RUN go mod download
+
+# Copy source
 COPY . .
-RUN go build -o catalog main.go
 
-# Stage 2: Run
-FROM alpine:3.20
-WORKDIR /app
-COPY --from=builder /app/catalog .
-COPY repository/products.json repository/tags.json ./repository/
+# Enable CGO for sqlite
+ENV CGO_ENABLED=1 GOOS=linux GOARCH=amd64
 
-# Create non-root user
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
+# Build the Go binary
+RUN go build -o catalog .
 
-EXPOSE 8080
+# ---------- Final Stage ----------
+FROM gcr.io/distroless/base-debian11
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD wget --spider -q http://localhost:8080/health || exit 1
+WORKDIR /
+COPY --from=builder /app/catalog /catalog
 
-ENV DB_HOST=mysql \
-    DB_PORT=3306 \
-    DB_USER=catalog \
-    DB_PASSWORD=changeme \
-    DB_NAME=catalog
-
-ENTRYPOINT ["./catalog"]
+CMD ["/catalog"]
