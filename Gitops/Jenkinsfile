@@ -1,0 +1,52 @@
+pipeline {
+    agent any
+
+
+
+    environment {
+        GITHUB_CREDENTIALS = 'Github-cred'
+        GITHUB_REPO = 'https://github.com/Roshanx96/store-app.git'
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', credentialsId: "${env.GITHUB_CREDENTIALS}", url: "${env.GITHUB_REPO}"
+            }
+        }
+
+
+        stage("Git: Code update and push to GitHub") {
+            steps {
+                dir('kubernetes') {
+                    script {
+                        withCredentials([gitUsernamePassword(credentialsId: 'Github-cred', gitToolName: 'Default')]) {
+                            sh '''
+                                echo "Checking repository status:"
+                                git status
+
+                                echo "Adding changes to Git:"
+                                git add .
+
+                                echo "Committing changes (if any):"
+                                git commit -m "Updated image tags in Kubernetes manifests" || echo "⚠️ No changes to commit."
+
+                                echo "Pushing changes to GitHub:"
+                                git push https://github.com/Roshanx96/store-app.git main
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ store-app CD Pipeline Successful"
+        }
+        failure {
+            echo "❌ store-app CD Pipeline Failed"
+        }
+    }
+}

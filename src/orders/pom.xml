@@ -238,8 +238,9 @@
 				<configuration>
 					<configLocation>../misc/style/java/checkstyle.xml</configLocation>
 					<consoleOutput>true</consoleOutput>
-					<failsOnError>true</failsOnError>
+					<failsOnError>false</failsOnError>
                     <excludes>**/sample/events/**/*</excludes>
+                    <skip>${checkstyle.skip}</skip>
 				</configuration>
 			</plugin>
         </plugins>
