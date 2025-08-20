@@ -119,28 +119,14 @@ pipeline {
 
         stage('Check Sonar') {
             steps {
-                sh 'echo SONAR_HOME="$SONAR_HOME"'
-                sh '$SONAR_HOME/bin/sonar-scanner --version'
-            }
-        }
-
-        stage('SonarQube: Code Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
+                script {
+                    echo '🔍 Verifying SonarQube Scanner installation...'
                     sh '''
-                        ${SONAR_HOME}/bin/sonar-scanner \
-                        -Dsonar.projectKey=store-app \
-                        -Dsonar.projectName=store-app \
-                        -Dsonar.sources=.
+                        echo "SONAR_HOME: $SONAR_HOME"
+                        echo "SonarQube Scanner version:"
+                        $SONAR_HOME/bin/sonar-scanner --version
+                        echo "✅ SonarQube analysis will run after service compilation"
                     '''
-                }
-            }
-        }
-
-        stage('SonarQube: Quality Gate') {
-            steps {
-                timeout(time: 1, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
                 }
             }
         }
@@ -402,6 +388,30 @@ pipeline {
                 }
                 success {
                     echo '✅ UI service build completed successfully'
+                }
+            }
+        }
+
+        stage('SonarQube: Code Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                        ${SONAR_HOME}/bin/sonar-scanner \
+                        -Dsonar.projectKey=store-app \
+                        -Dsonar.projectName=store-app \
+                        -Dsonar.sources=src \
+                        -Dsonar.java.binaries=src/cart/target/classes,src/orders/target/classes,src/ui/target/classes \
+                        -Dsonar.exclusions=**/node_modules/**,**/target/**,**/*.jar,**/*.class \
+                        -Dsonar.coverage.exclusions=**/test/**,**/tests/**,**/*Test.java,**/*Spec.ts
+                    '''
+                }
+            }
+        }
+
+        stage('SonarQube: Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
